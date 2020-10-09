@@ -5,17 +5,6 @@ from bluepy.btle import BTLEException
 from bluepy.sensortag import SensorTag
 from config import SENSOR_TAG_LIST
 
-IR_TEMP = "ir_temp"
-ACCELEROMETER = "accelerometer"
-HUMIDITY = "humidity"
-MAGNETOMETER = "magnetometer"
-BAROMETER = "barometer"
-GYROSCOPE = "gyroscope"
-BATTERY = "battery"
-LIGHT = "light"
-
-DEFINED_SENSORS = [IR_TEMP, ACCELEROMETER, HUMIDITY, MAGNETOMETER, BAROMETER, GYROSCOPE, BATTERY, LIGHT]
-INTERESTED_SENSORS = [LIGHT, BATTERY]
 OUT_FILE = "lux.csv"
 TIME_BETWEEN_READS = 5
 TIME_BETWEEN_WRITES = 10
@@ -24,13 +13,15 @@ TIME_BETWEEN_RETRY = 5
 LUX_READINGS = []
 
 
-def get_light(tag):
-    ret = None
+def get_light_and_battery(tag):
+    light = -1
+    battery = -1
     try:
-        ret = tag.lightmeter.read()
+        light = tag.lightmeter.read()
+        battery = tag.battery.read()
     except Exception as e:
         print(e)
-    return ret
+    return int(light), int(battery)
 
 
 def get_time():
@@ -45,6 +36,7 @@ def collect_lux_readings(label, ble_mac):
         try:
             tag = SensorTag(ble_mac)
             tag.lightmeter.enable()
+            tag.battery.enable()
             time.sleep(1.0)
         except Exception as e:
             print(ble_mac, label, str(e))
@@ -53,10 +45,9 @@ def collect_lux_readings(label, ble_mac):
     print(ble_mac, label, "connected")
 
     while 1:
-        light = get_light(tag)
-        if light:
-            reading={"timestamp":get_time(),"lux":light,"label":label}
-            LUX_READINGS.append(reading)
+        light, battery = get_light_and_battery(tag)
+        reading = {"timestamp": get_time(), "lux": light, "battery": battery, "label": label}
+        LUX_READINGS.append(reading)
         time.sleep(TIME_BETWEEN_READS)
 
 
